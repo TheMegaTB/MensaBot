@@ -7,13 +7,23 @@ struct MealDate: Codable {
     let day: Int
 
     var fullDate: String {
-        return String(format: "DATE:%04d%02d%02d", year, month, day)
+        return String(format: "%04d%02d%02d", year, month, day)
+    }
+
+    var icsDate: String {
+        return "DATE:\(fullDate)"
     }
 
     init(year: Int, month: Int, day: Int) {
         self.year = year
         self.month = month
         self.day = day
+    }
+
+    init(date: Date) {
+        self.year = Calendar.current.component(.year, from: date)
+        self.month = Calendar.current.component(.month, from: date)
+        self.day = Calendar.current.component(.day, from: date)
     }
 }
 
@@ -26,15 +36,14 @@ final class Meal: SQLiteModel {
     var title: String
     var priceInCent: Int
 
-    var allergicNotes: String
+    var allergicNotes: String?
     var vegetarian: Bool
 
     var date: MealDate
-    var sequenceID: Int
 
     /// Creates a new `Meal`.
-    init(id: Int? = nil, title: String, priceInCent: Int, allergicNotes: String, vegetarian: Bool, date: MealDate, sequenceID: Int?) {
-        self.id = id
+    init(id: Int? = nil, title: String, priceInCent: Int, allergicNotes: String?, vegetarian: Bool, date: MealDate) {
+        self.id = Int((vegetarian ? "1" : "0") + date.fullDate)
 
         self.title = title
         self.priceInCent = priceInCent
@@ -43,7 +52,20 @@ final class Meal: SQLiteModel {
         self.vegetarian = vegetarian
 
         self.date = date
-        self.sequenceID = sequenceID ?? 0
+    }
+
+    convenience init?(rawTitle: String, rawPrice: String, vegetarian: Bool, date: MealDate) {
+        let splitTitle = rawTitle.components(separatedBy: " (")
+
+        let title = splitTitle[0]
+        var allergicNotes = splitTitle.count > 1 ? splitTitle[1] : nil
+        allergicNotes?.removeLast()
+
+        guard let price = Int(rawPrice.replacingOccurrences(of: " Eur", with: "").replacingOccurrences(of: ",", with: "")) else {
+            return nil
+        }
+
+        self.init(id: nil, title: title, priceInCent: price, allergicNotes: allergicNotes, vegetarian: vegetarian, date: date)
     }
 
     func toICSEvent() -> String {
@@ -61,14 +83,15 @@ final class Meal: SQLiteModel {
 
         """
 
-        vEvent += "SEQUENCE:\(sequenceID)\n"
         vEvent += "UID:\(eventID)\n"
         vEvent += "DTSTAMP:\(now)\n"
-        vEvent += "DTSTART;VALUE=\(date.fullDate)\n"
+        vEvent += "DTSTART;VALUE=\(date.icsDate)\n"
         vEvent += "SUMMARY:\(title)\n"
 
         vEvent += "DESCRIPTION:Preis:\t\t\t\(String(format: "%.2f", Float(priceInCent) / 100.0))€\n"
-        vEvent += "  \\nAllergikerinfo:\t\t\(allergicNotes)\n"
+        if let notes = allergicNotes {
+            vEvent += "  \\nAllergikerinfo:\t\t\(notes)\n"
+        }
         vEvent += "  \\nVegetarisch:\t\t\(vegetarian ? "Ja" : "Nein")\n"
 
         vEvent += "END:VEVENT\n"
