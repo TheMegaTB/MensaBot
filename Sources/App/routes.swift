@@ -5,5 +5,4 @@ public func routes(_ router: Router) throws {
     let mealController = MealController()
     router.get("meals", use: mealController.index)
     router.get("meals.ics", use: mealController.icsIndex)
-    router.get("create", use: mealController.create)
 }
