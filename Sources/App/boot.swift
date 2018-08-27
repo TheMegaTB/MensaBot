@@ -8,15 +8,18 @@ func updateData(_ app: Application, baseDate: Date) throws {
     let timestamp = Int(baseDate.timeIntervalSince1970 * 1000)
 
     _ = client.crawlMensa(url: "https://cis.nordakademie.de/mensa/speiseplan.cmd?date=\(timestamp)&action=show") { data in
+
         let days = zip(data.readableTitles, data.readablePrices).map { day in
             zip(day.0, day.1)
         }
+
         days.enumerated().forEach { index, day in
             day.enumerated().forEach { dayIndex, meal in
                 guard let mealDate = Calendar.current.date(byAdding: .day, value: index, to: startDate) else {
                     return
                 }
-                let date = MealDate(date: mealDate)
+                let fallbackDate = MealDate(date: mealDate)
+                let date = data.dates[dayIndex] ?? fallbackDate
 
                 guard let meal = Meal.init(rawTitle: meal.0, rawPrice: meal.1, vegetarian: dayIndex == 1, date: date) else {
                     return
@@ -34,9 +37,9 @@ func updateData(_ app: Application, baseDate: Date) throws {
 public func boot(_ app: Application) throws {
     DispatchQueue.global().async {
         while true {
-            _ = try? updateData(app, baseDate: Calendar.current.date(byAdding: .day, value: -7, to: Date())!)
+//            _ = try? updateData(app, baseDate: Calendar.current.date(byAdding: .day, value: -7, to: Date())!)
             _ = try? updateData(app, baseDate: Date())
-            _ = try? updateData(app, baseDate: Calendar.current.date(byAdding: .day, value: 7, to: Date())!)
+//            _ = try? updateData(app, baseDate: Calendar.current.date(byAdding: .day, value: 7, to: Date())!)
             Thread.sleep(forTimeInterval: 60 * 60 * 24)
         }
     }
@@ -75,6 +78,7 @@ extension Client {
 class MensaHTMLDecoder: NSObject, XMLParserDelegate {
     private var contentType = ContentType.none
     private var day = -1
+    private(set) var dates: [MealDate?] = []
     private var titles: [[[String]]] = Array(repeating: [], count: 5)
     private(set) var prices: [[[String]]] = Array(repeating: [], count: 5)
 
@@ -98,6 +102,7 @@ class MensaHTMLDecoder: NSObject, XMLParserDelegate {
         case none
         case title
         case price
+        case date
     }
 
     func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String : String] = [:]) {
@@ -111,11 +116,17 @@ class MensaHTMLDecoder: NSObject, XMLParserDelegate {
                 contentType = .price
                 prices[day].append([])
             }
+        } else if elementName == "td" {
+            if attributeDict["class"] == "speiseplan-head" {
+                contentType = .date
+            }
         }
     }
 
     func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
-        contentType = .none
+        if elementName != "b" {
+            contentType = .none
+        }
     }
 
     func parser(_ parser: XMLParser, foundCharacters string: String) {
@@ -126,6 +137,22 @@ class MensaHTMLDecoder: NSObject, XMLParserDelegate {
             titles[day][titles[day].count - 1].append(string)
         case .price:
             prices[day][prices[day].count - 1].append(string)
+        case .date:
+            if string.contains(".") {
+                let currentYear = Calendar.current.component(.year, from: Date())
+                let dateComponents = string.split(separator: "\n")[1]
+                                    .trimmingCharacters(in: [" "])
+                                    .split(separator: ".")
+
+                if let month = Int(dateComponents[1]), let day = Int(dateComponents[0]) {
+                    dates.append(MealDate(year: currentYear, month: month, day: day))
+                } else {
+                    print("Failed to parse date!")
+                    dates.append(nil)
+                }
+            }
         }
+
+
     }
 }
