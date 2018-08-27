@@ -37,9 +37,9 @@ func updateData(_ app: Application, baseDate: Date) throws {
 public func boot(_ app: Application) throws {
     DispatchQueue.global().async {
         while true {
-//            _ = try? updateData(app, baseDate: Calendar.current.date(byAdding: .day, value: -7, to: Date())!)
+            _ = try? updateData(app, baseDate: Calendar.current.date(byAdding: .day, value: -7, to: Date())!)
             _ = try? updateData(app, baseDate: Date())
-//            _ = try? updateData(app, baseDate: Calendar.current.date(byAdding: .day, value: 7, to: Date())!)
+            _ = try? updateData(app, baseDate: Calendar.current.date(byAdding: .day, value: 7, to: Date())!)
             Thread.sleep(forTimeInterval: 60 * 60 * 24)
         }
     }
