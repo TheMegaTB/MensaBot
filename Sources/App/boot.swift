@@ -19,7 +19,7 @@ func updateData(_ app: Application, baseDate: Date) throws {
                     return
                 }
                 let fallbackDate = MealDate(date: mealDate)
-                let date = data.dates[dayIndex] ?? fallbackDate
+                let date = fallbackDate // TODO This does not work (HTML parsing fails apparently): data.dates[dayIndex] ?? fallbackDate
 
                 guard let meal = Meal.init(rawTitle: meal.0, rawPrice: meal.1, vegetarian: dayIndex == 1, date: date) else {
                     return
@@ -27,6 +27,8 @@ func updateData(_ app: Application, baseDate: Date) throws {
 
                 _ = app.withNewConnection(to: .sqlite) { conn in
                     return meal.create(on: conn)
+                }.catch { error in
+                    print(error, meal.id ?? "--noid--", meal.title)
                 }
             }
         }
