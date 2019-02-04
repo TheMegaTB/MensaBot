@@ -1,4 +1,5 @@
 import Vapor
+import SQLite3
 
 func updateData(_ app: Application, baseDate: Date) throws {
     let client = try app.client()
@@ -6,6 +7,8 @@ func updateData(_ app: Application, baseDate: Date) throws {
     let startDate = Calendar.current.date(byAdding: .day, value: -(weekday - 2), to: baseDate)!
 
     let timestamp = Int(baseDate.timeIntervalSince1970 * 1000)
+
+    print("crawling for timestamp \(baseDate) -> \(timestamp)")
 
     _ = client.crawlMensa(url: "https://cis.nordakademie.de/mensa/speiseplan.cmd?date=\(timestamp)&action=show") { data in
 
@@ -26,7 +29,12 @@ func updateData(_ app: Application, baseDate: Date) throws {
                 }
 
                 _ = app.withNewConnection(to: .sqlite) { conn in
-                    return meal.create(on: conn)
+                    // Upsert meal
+                    return Meal.find((meal.id ?? 0), on: conn).then({ (existingMeal: Meal?) -> EventLoopFuture<Void> in
+                        return
+                            existingMeal?.delete(on: conn).then { meal.create(on: conn).transform(to: ()) }
+                            ?? meal.create(on: conn).transform(to: ())
+                    })
                 }.catch { error in
                     print(error, meal.id ?? "--noid--", meal.title)
                 }

@@ -43,7 +43,7 @@ final class Meal: SQLiteModel {
 
     /// Creates a new `Meal`.
     init(id: Int? = nil, title: String, priceInCent: Int, allergicNotes: String?, vegetarian: Bool, date: MealDate) {
-        self.id = Int((vegetarian ? "1" : "0") + date.fullDate)
+        self.id = id ?? Int((vegetarian ? "1" : "0") + date.fullDate)
 
         self.title = title
         self.priceInCent = priceInCent
