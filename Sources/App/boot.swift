@@ -1,5 +1,4 @@
 import Vapor
-import SQLite3
 
 func updateData(_ app: Application, baseDate: Date) throws {
     let client = try app.client()
