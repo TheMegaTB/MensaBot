@@ -215,7 +215,7 @@ final class LandingPageController {
             }
 
             registerClickListener('venn-sets-A', '?filterVegetarian=1');
-            registerClickListener('venn-sets-A_B');
+            registerClickListener('venn-sets-A_B', '');
             registerClickListener('venn-sets-B', '?filterVegetarian=0');
           </script>
         </body>
