@@ -49,7 +49,7 @@ public func boot(_ app: Application) throws {
             _ = try? updateData(app, baseDate: Calendar.current.date(byAdding: .day, value: -7, to: Date())!)
             _ = try? updateData(app, baseDate: Date())
             _ = try? updateData(app, baseDate: Calendar.current.date(byAdding: .day, value: 7, to: Date())!)
-            Thread.sleep(forTimeInterval: 60 * 60 * 24)
+            Thread.sleep(forTimeInterval: 60 * 60) // Update database every hour
         }
     }
 }
